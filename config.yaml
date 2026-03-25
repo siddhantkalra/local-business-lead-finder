@@ -1,0 +1,76 @@
+city: "Toronto, ON, Canada"
+
+categories:
+  # trades
+  - plumber
+  - electrician
+  - hvac contractor
+  - roofing contractor
+  - handyman
+  - general contractor
+  # home services
+  - landscaping
+  - lawn care
+  - tree service
+  - snow removal
+  - cleaning service
+  - house cleaning
+  - pressure washing
+  - junk removal
+  # construction
+  - painter
+  - flooring contractor
+  - tile contractor
+  - drywall contractor
+  # professional services
+  - lawyer
+  - accountant
+  - tax preparation
+  - financial advisor
+  - mortgage broker
+  - insurance broker
+  - real estate agent
+  - property manager
+  # healthcare
+  - dentist
+  - chiropractor
+  - physiotherapist
+  - massage therapist
+  # beauty
+  - hair salon
+  - barber shop
+  - nail salon
+  - med spa
+  # fitness
+  - personal trainer
+  - yoga studio
+  - pilates studio
+  # white collar
+  - architect
+  - interior designer
+  - therapist
+  - psychologist
+  - dietitian
+
+# How far from city center to search (km). 20 covers central Toronto + inner suburbs.
+radius_km: 20
+
+# Only export leads scoring at or above this threshold
+min_lead_score: 6
+
+website_checks:
+  timeout_seconds: 8
+  user_agent: "Mozilla/5.0 (compatible; LocalLeadFinder/1.0)"
+  booking_keywords:
+    - "book"
+    - "appointment"
+    - "schedule"
+    - "reserve"
+    - "contact us"
+    - "get a quote"
+    - "free estimate"
+
+scoring:
+  high_opportunity_reviews_max: 20
+  mature_reviews_min: 100
+  min_score_for_outreach_message: 7

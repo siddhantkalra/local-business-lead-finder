@@ -1,0 +1,839 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Lead Finder</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --g900:#1B4332;--g800:#2D6A4F;--g700:#40916C;--g600:#52B788;
+  --g300:#95D5B2;--g100:#D8F3DC;--g50:#F0FAF4;
+  --amber:#D97706;--amber-bg:#FEF3C7;
+  --red:#DC2626;--red-bg:#FEE2E2;
+  --blue:#2563EB;--blue-bg:#EFF6FF;
+  --gray9:#111827;--gray6:#4B5563;--gray4:#9CA3AF;
+  --gray2:#E5E7EB;--gray1:#F9FAFB;--white:#FFFFFF;
+  --shadow-sm:0 1px 3px rgba(0,0,0,.07);
+  --shadow:0 4px 12px rgba(0,0,0,.08);
+  --shadow-lg:0 8px 32px rgba(0,0,0,.14);
+  --radius:10px;--radius-sm:6px;--t:.15s ease;
+  --sidebar-w:340px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',sans-serif;background:var(--g50);color:var(--gray9);font-size:14px;line-height:1.5;overflow-x:hidden}
+a{color:inherit;text-decoration:none}
+button{font-family:inherit;cursor:pointer;border:none;outline:none}
+select,input,textarea{font-family:inherit;outline:none}
+
+/* ── Layout shell ────────────────────────────────────────────────────── */
+#app{display:flex;flex-direction:column;min-height:100vh;transition:margin-right var(--t)}
+#app.sidebar-open{margin-right:var(--sidebar-w)}
+
+/* ── Header ─────────────────────────────────────────────────────────── */
+header{
+  position:sticky;top:0;z-index:100;
+  background:var(--white);border-bottom:1px solid var(--gray2);
+  padding:0 24px;display:flex;align-items:center;gap:16px;height:60px;
+  box-shadow:var(--shadow-sm);
+}
+.logo{font-size:17px;font-weight:700;color:var(--g800);letter-spacing:-.3px;white-space:nowrap}
+.logo span{color:var(--g600)}
+.header-stats{display:flex;gap:12px;margin-left:4px}
+.stat-pill{
+  display:flex;align-items:center;gap:6px;
+  background:var(--g50);border:1px solid var(--g100);
+  border-radius:20px;padding:4px 10px;font-size:12px;color:var(--g800);white-space:nowrap;
+}
+.stat-pill .dot{width:7px;height:7px;border-radius:50%;background:var(--g600);flex-shrink:0}
+.dot.red{background:var(--red)!important}
+.dot.pulse{animation:pulse 1.4s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.spacer{flex:1}
+.btn{display:inline-flex;align-items:center;gap:7px;padding:8px 16px;border-radius:var(--radius-sm);font-size:13px;font-weight:500;transition:var(--t)}
+.btn-ghost{background:none;border:1px solid var(--gray2);color:var(--gray6)}
+.btn-ghost:hover{background:var(--gray1);border-color:var(--gray4)}
+.btn-primary{background:var(--g800);color:var(--white)}
+.btn-primary:hover{background:var(--g900)}
+.btn-primary:disabled{background:var(--gray4);cursor:not-allowed}
+.btn-danger{background:var(--red-bg);color:var(--red);border:1px solid #fca5a5}
+.btn-danger:hover{background:#fee2e2}
+.btn-sm{padding:5px 10px;font-size:12px}
+.spinner{display:inline-block;width:13px;height:13px;border:2px solid rgba(255,255,255,.3);border-top-color:var(--white);border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0}
+@keyframes spin{to{transform:rotate(360deg)}}
+/* log toggle button */
+#log-toggle-btn{position:relative}
+#log-badge{
+  position:absolute;top:-4px;right:-4px;background:var(--amber);color:var(--white);
+  font-size:10px;font-weight:700;width:16px;height:16px;border-radius:50%;
+  display:none;align-items:center;justify-content:center;
+}
+#log-toggle-btn.has-activity #log-badge{display:flex}
+
+/* ── Tab nav ─────────────────────────────────────────────────────────── */
+.tab-bar{
+  position:sticky;top:60px;z-index:90;
+  background:var(--white);border-bottom:1px solid var(--gray2);
+  padding:0 24px;display:flex;align-items:center;gap:2px;overflow-x:auto;
+}
+.tab-bar::-webkit-scrollbar{display:none}
+.tab-btn{
+  display:flex;align-items:center;gap:7px;
+  padding:14px 14px;font-size:13px;font-weight:500;
+  color:var(--gray6);background:none;border-bottom:2px solid transparent;
+  white-space:nowrap;transition:var(--t);
+}
+.tab-btn:hover{color:var(--g800)}
+.tab-btn.active{color:var(--g800);border-bottom-color:var(--g700)}
+.tab-btn .badge{
+  background:var(--gray2);color:var(--gray6);
+  font-size:11px;font-weight:600;padding:1px 7px;border-radius:10px;
+}
+.tab-btn.active .badge{background:var(--g100);color:var(--g800)}
+.close-tab{
+  width:16px;height:16px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:11px;color:var(--gray4);opacity:0;transition:var(--t);
+}
+.tab-btn:hover .close-tab{opacity:1}
+.close-tab:hover{background:var(--gray2);color:var(--gray6)}
+.add-view-btn{
+  margin-left:8px;padding:6px 12px;border-radius:var(--radius-sm);
+  font-size:12px;font-weight:600;color:var(--g700);
+  background:none;border:1.5px dashed var(--g300);transition:var(--t);
+}
+.add-view-btn:hover{background:var(--g100)}
+
+/* ── Main content ────────────────────────────────────────────────────── */
+main{padding:20px 24px 100px;flex:1}
+.panel{display:none}
+.panel.active{display:block}
+.toolbar{display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+.search-input{
+  display:flex;align-items:center;gap:8px;
+  background:var(--white);border:1px solid var(--gray2);
+  border-radius:var(--radius-sm);padding:7px 12px;flex:1;max-width:320px;transition:var(--t);
+}
+.search-input:focus-within{border-color:var(--g600);box-shadow:0 0 0 3px rgba(82,183,136,.15)}
+.search-input input{border:none;background:none;font-size:13px;width:100%}
+.toolbar-right{margin-left:auto;display:flex;align-items:center;gap:8px;font-size:12px;color:var(--gray6);flex-wrap:wrap}
+
+/* ── Table ───────────────────────────────────────────────────────────── */
+.table-wrap{background:var(--white);border:1px solid var(--gray2);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow-sm)}
+table{width:100%;border-collapse:collapse}
+thead{background:var(--g50);border-bottom:1px solid var(--gray2)}
+th{padding:10px 14px;text-align:left;font-size:11px;font-weight:600;color:var(--gray6);text-transform:uppercase;letter-spacing:.5px;white-space:nowrap}
+td{padding:11px 14px;border-bottom:1px solid var(--gray2);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr.selected td{background:#f0faf4}
+tr:hover td{background:var(--g50)}
+tr.selected:hover td{background:#e8f7ef}
+.cb{width:16px;height:16px;accent-color:var(--g700);cursor:pointer}
+.th-cb{width:42px}
+
+/* Badges */
+.score-badge{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;font-size:12px;font-weight:700}
+.score-high{background:var(--g100);color:var(--g900)}
+.score-mid{background:var(--amber-bg);color:#92400E}
+.score-low{background:var(--red-bg);color:#991B1B}
+.tag{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:20px;font-size:11px;font-weight:500;white-space:nowrap}
+.tag-red{background:var(--red-bg);color:var(--red)}
+.tag-amber{background:var(--amber-bg);color:#92400E}
+.tag-blue{background:var(--blue-bg);color:var(--blue)}
+.tag-gray{background:var(--gray2);color:var(--gray6)}
+.tag-green{background:var(--g100);color:var(--g900)}
+
+.biz-name{font-weight:600;color:var(--gray9);font-size:13px}
+.biz-name a:hover{color:var(--g700);text-decoration:underline}
+.biz-addr{font-size:12px;color:var(--gray4);margin-top:2px}
+.biz-cat{font-size:11px;color:var(--gray6);background:var(--gray1);border:1px solid var(--gray2);padding:2px 7px;border-radius:20px}
+.gbp-flags{display:flex;flex-wrap:wrap;gap:4px}
+.reasons{display:flex;flex-wrap:wrap;gap:4px;max-width:260px}
+
+/* Workspace selects */
+.status-select,.action-select{
+  border:1px solid var(--gray2);border-radius:var(--radius-sm);
+  padding:4px 8px;font-size:12px;font-weight:500;background:var(--white);cursor:pointer;transition:var(--t);
+}
+.status-select:hover,.action-select:hover{border-color:var(--g600)}
+.status-active{background:var(--g100);color:var(--g900);border-color:var(--g300)}
+.status-hot{background:#FFE8D6;color:#9A3412;border-color:#FDBA74}
+.status-dead{background:var(--gray2);color:var(--gray6)}
+.action-not_contacted{background:var(--gray1);color:var(--gray6)}
+.action-contacted{background:var(--blue-bg);color:var(--blue);border-color:#BFDBFE}
+.action-deal{background:#FFF7ED;color:#C2410C;border-color:#FED7AA}
+.action-dead{background:var(--gray2);color:var(--gray6)}
+.action-closed_won{background:var(--g100);color:var(--g900);border-color:var(--g300)}
+.action-closed_lost{background:var(--red-bg);color:var(--red);border-color:#FCA5A5}
+.notes-input{
+  width:100%;min-width:140px;border:1px solid var(--gray2);
+  border-radius:var(--radius-sm);padding:4px 8px;font-size:12px;
+  resize:none;background:var(--gray1);transition:var(--t);
+}
+.notes-input:focus{border-color:var(--g600);background:var(--white);outline:none}
+
+/* Empty */
+.empty{text-align:center;padding:60px 24px;display:flex;flex-direction:column;align-items:center;gap:10px}
+.empty-icon{font-size:38px}
+.empty h3{font-size:16px;font-weight:600}
+.empty p{font-size:13px;color:var(--gray6);max-width:320px}
+
+/* ── Action bar ──────────────────────────────────────────────────────── */
+#action-bar{
+  position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(12px);
+  background:var(--g900);color:var(--white);
+  display:flex;align-items:center;gap:12px;
+  padding:12px 20px;border-radius:12px;
+  box-shadow:var(--shadow-lg);z-index:200;
+  opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;
+}
+#action-bar.visible{opacity:1;pointer-events:all;transform:translateX(-50%) translateY(0)}
+#action-bar .sel-count{font-size:13px;font-weight:600}
+#action-bar .divider{width:1px;height:20px;background:rgba(255,255,255,.2)}
+.bar-btn{padding:7px 14px;border-radius:var(--radius-sm);font-size:13px;font-weight:500;transition:var(--t)}
+.bar-btn-primary{background:var(--g600);color:var(--white)}
+.bar-btn-primary:hover{background:var(--g700)}
+.bar-btn-ghost{background:rgba(255,255,255,.1);color:var(--white)}
+.bar-btn-ghost:hover{background:rgba(255,255,255,.2)}
+
+/* ── Log sidebar ─────────────────────────────────────────────────────── */
+#log-sidebar{
+  position:fixed;top:0;right:0;bottom:0;width:var(--sidebar-w);z-index:150;
+  background:var(--white);border-left:1px solid var(--gray2);
+  box-shadow:var(--shadow-lg);
+  display:flex;flex-direction:column;
+  transform:translateX(100%);transition:transform .25s ease;
+}
+#log-sidebar.open{transform:translateX(0)}
+.sidebar-header{
+  display:flex;align-items:center;gap:10px;
+  padding:14px 16px;border-bottom:1px solid var(--gray2);
+  flex-shrink:0;background:var(--g50);
+}
+.sidebar-title{font-size:14px;font-weight:600;color:var(--g800);flex:1}
+.sidebar-status-pill{
+  display:flex;align-items:center;gap:5px;
+  font-size:11px;font-weight:500;padding:3px 9px;border-radius:20px;
+}
+.sidebar-status-running{background:var(--amber-bg);color:#92400E}
+.sidebar-status-done{background:var(--g100);color:var(--g900)}
+.sidebar-status-error{background:var(--red-bg);color:var(--red)}
+.sidebar-status-idle{background:var(--gray2);color:var(--gray6)}
+.sidebar-close{
+  width:28px;height:28px;border-radius:var(--radius-sm);
+  display:flex;align-items:center;justify-content:center;
+  color:var(--gray6);font-size:16px;transition:var(--t);
+}
+.sidebar-close:hover{background:var(--gray2)}
+.sidebar-log{
+  flex:1;overflow-y:auto;padding:12px;
+  background:var(--gray9);
+  font-family:'SF Mono','Fira Code',monospace;font-size:11.5px;line-height:1.75;
+}
+.log-line{color:#86efac;display:block;word-break:break-all}
+.log-line.warn{color:#fde68a}
+.log-line.err{color:#f87171}
+.log-line.meta{color:#94a3b8}
+.sidebar-footer{
+  padding:12px 16px;border-top:1px solid var(--gray2);
+  font-size:12px;color:var(--gray6);flex-shrink:0;
+  display:flex;align-items:center;justify-content:space-between;
+}
+#sidebar-line-count{font-size:11px;color:var(--gray4)}
+
+/* ── View modal ──────────────────────────────────────────────────────── */
+.overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,.45);
+  display:flex;align-items:center;justify-content:center;
+  z-index:300;opacity:0;pointer-events:none;transition:opacity .2s;
+}
+.overlay.visible{opacity:1;pointer-events:all}
+.modal-card{
+  background:var(--white);border-radius:14px;box-shadow:var(--shadow-lg);
+  padding:28px;width:500px;max-width:95vw;max-height:90vh;overflow-y:auto;
+}
+.modal-card h2{font-size:17px;font-weight:700;margin-bottom:4px}
+.modal-card .sub{font-size:13px;color:var(--gray6);margin-bottom:20px}
+.form-row{margin-bottom:14px}
+.form-label{font-size:12px;font-weight:600;color:var(--gray6);text-transform:uppercase;letter-spacing:.4px;display:block;margin-bottom:5px}
+.form-input{
+  width:100%;border:1px solid var(--gray2);border-radius:var(--radius-sm);
+  padding:8px 12px;font-size:13px;transition:var(--t);background:var(--white);
+}
+.form-input:focus{border-color:var(--g600);box-shadow:0 0 0 3px rgba(82,183,136,.15)}
+.form-row-2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.form-row-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:20px}
+
+/* scrollbar */
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--gray2);border-radius:3px}
+.sidebar-log::-webkit-scrollbar-thumb{background:#374151}
+</style>
+</head>
+<body>
+
+<div id="app">
+
+<!-- HEADER -->
+<header>
+  <div class="logo">Lead<span>Finder</span></div>
+  <div class="header-stats">
+    <div class="stat-pill"><div class="dot" id="key-dot"></div><span id="key-label">Checking…</span></div>
+    <div class="stat-pill" id="leads-pill"><div class="dot" id="leads-dot" style="background:var(--gray4)"></div><span id="leads-label">0 leads cached</span></div>
+  </div>
+  <div class="spacer"></div>
+  <button class="btn btn-ghost btn-sm" onclick="checkSetup()">↻ Check Setup</button>
+  <button class="btn btn-ghost btn-sm" id="log-toggle-btn" onclick="toggleSidebar()" title="Search log">
+    📋 Log <span id="log-badge"></span>
+  </button>
+  <button class="btn btn-primary" id="run-btn" onclick="handleRunSearch()">
+    <span id="run-icon">▶</span> Run Search
+  </button>
+</header>
+
+<!-- TABS -->
+<nav class="tab-bar" id="tab-bar">
+  <button class="tab-btn active" data-tab="no-website" onclick="switchTab('no-website',this)">
+    ⊘ No Website <span class="badge" id="badge-no-website">0</span>
+  </button>
+  <button class="tab-btn" data-tab="needs-improvement" onclick="switchTab('needs-improvement',this)">
+    ⚠ Needs Improvement <span class="badge" id="badge-needs-improvement">0</span>
+  </button>
+  <button class="tab-btn" data-tab="workspace" onclick="switchTab('workspace',this)">
+    ◈ Workspace <span class="badge" id="badge-workspace">0</span>
+  </button>
+  <button class="add-view-btn" onclick="openViewModal()">+ View</button>
+</nav>
+
+<!-- MAIN -->
+<main>
+
+  <!-- NO WEBSITE -->
+  <div class="panel active" id="panel-no-website">
+    <div class="toolbar">
+      <div class="search-input">🔍 <input type="text" placeholder="Search…" oninput="filterTable('no-website',this.value)"/></div>
+      <div class="toolbar-right">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+          <input type="checkbox" class="cb" id="sa-no-website" onchange="selectAll('no-website',this.checked)"/>Select all
+        </label>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table><thead><tr>
+        <th class="th-cb"></th><th>Score</th><th>Business</th><th>Category</th><th>Phone</th><th>GBP Issues</th><th>Reasons</th>
+      </tr></thead>
+      <tbody id="body-no-website"><tr><td colspan="7"><div class="empty"><div class="empty-icon">🔍</div><h3>No leads yet</h3><p>Run a search to find businesses without websites.</p></div></td></tr></tbody></table>
+    </div>
+  </div>
+
+  <!-- NEEDS IMPROVEMENT -->
+  <div class="panel" id="panel-needs-improvement">
+    <div class="toolbar">
+      <div class="search-input">🔍 <input type="text" placeholder="Search…" oninput="filterTable('needs-improvement',this.value)"/></div>
+      <div class="toolbar-right">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+          <input type="checkbox" class="cb" id="sa-needs-improvement" onchange="selectAll('needs-improvement',this.checked)"/>Select all
+        </label>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table><thead><tr>
+        <th class="th-cb"></th><th>Score</th><th>Business</th><th>Category</th><th>Website Issues</th><th>GBP Issues</th><th>Reasons</th>
+      </tr></thead>
+      <tbody id="body-needs-improvement"><tr><td colspan="7"><div class="empty"><div class="empty-icon">🔍</div><h3>No leads yet</h3><p>Run a search to find businesses needing improvement.</p></div></td></tr></tbody></table>
+    </div>
+  </div>
+
+  <!-- WORKSPACE -->
+  <div class="panel" id="panel-workspace">
+    <div class="toolbar">
+      <div class="search-input">🔍 <input type="text" placeholder="Search workspace…" oninput="filterTable('workspace',this.value)"/></div>
+      <div class="toolbar-right">
+        <select class="status-select" onchange="state.wsStatusFilter=this.value;renderWorkspace()" style="font-size:12px;">
+          <option value="">All statuses</option>
+          <option value="active">Active</option>
+          <option value="hot">Hot</option>
+          <option value="dead">Dead</option>
+        </select>
+        <select class="action-select" onchange="state.wsActionFilter=this.value;renderWorkspace()" style="font-size:12px;">
+          <option value="">All actions</option>
+          <option value="not_contacted">Not Contacted</option>
+          <option value="contacted">Contacted</option>
+          <option value="deal">Deal</option>
+          <option value="closed_won">Closed Won</option>
+          <option value="closed_lost">Closed Lost</option>
+          <option value="dead">Dead</option>
+        </select>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+          <input type="checkbox" class="cb" id="sa-workspace" onchange="selectAll('workspace',this.checked)"/>Select all
+        </label>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table><thead><tr>
+        <th class="th-cb"></th><th>Score</th><th>Business</th><th>Phone</th><th>Status</th><th>Action</th><th>Notes</th><th>Added</th><th></th>
+      </tr></thead>
+      <tbody id="body-workspace"><tr><td colspan="9"><div class="empty"><div class="empty-icon">📋</div><h3>Workspace is empty</h3><p>Select leads from the other tabs and move them here.</p></div></td></tr></tbody></table>
+    </div>
+  </div>
+
+</main>
+</div><!-- #app -->
+
+<!-- ACTION BAR -->
+<div id="action-bar">
+  <span class="sel-count" id="sel-count-label">0 selected</span>
+  <div class="divider"></div>
+  <button class="bar-btn bar-btn-primary" onclick="moveToWorkspace()">→ Move to Workspace</button>
+  <button class="bar-btn bar-btn-ghost" onclick="clearSelection()">✕ Deselect</button>
+</div>
+
+<!-- LOG SIDEBAR -->
+<div id="log-sidebar">
+  <div class="sidebar-header">
+    <span class="sidebar-title">Search Log</span>
+    <span class="sidebar-status-pill sidebar-status-idle" id="sidebar-status-pill">Idle</span>
+    <button class="sidebar-close" onclick="toggleSidebar()">✕</button>
+  </div>
+  <div class="sidebar-log" id="sidebar-log"><span class="log-line meta">No search run yet. Press "Run Search" to start.</span></div>
+  <div class="sidebar-footer">
+    <span id="sidebar-line-count"></span>
+    <button class="btn btn-ghost btn-sm" onclick="clearLog()">Clear</button>
+  </div>
+</div>
+
+<!-- VIEW MODAL -->
+<div class="overlay" id="view-overlay">
+  <div class="modal-card">
+    <h2>Create Custom View</h2>
+    <p class="sub">Filter leads into a saved tab using any combination of criteria.</p>
+    <div class="form-row">
+      <label class="form-label">View Name</label>
+      <input class="form-input" id="view-name" type="text" placeholder="e.g. High Score Plumbers"/>
+    </div>
+    <div class="form-row">
+      <label class="form-label">Source</label>
+      <select class="form-input" id="view-source">
+        <option value="no_website">No Website leads</option>
+        <option value="needs_improvement">Needs Improvement leads</option>
+        <option value="workspace">Workspace leads</option>
+      </select>
+    </div>
+    <div class="form-row form-row-2">
+      <div>
+        <label class="form-label">Min Score</label>
+        <input class="form-input" id="view-score-min" type="number" min="1" max="10" placeholder="1"/>
+      </div>
+      <div>
+        <label class="form-label">Max Score</label>
+        <input class="form-input" id="view-score-max" type="number" min="1" max="10" placeholder="10"/>
+      </div>
+    </div>
+    <div class="form-row">
+      <label class="form-label">Category contains</label>
+      <input class="form-input" id="view-category" type="text" placeholder="e.g. plumber, dentist"/>
+    </div>
+    <div class="form-row">
+      <label class="form-label">Reason contains</label>
+      <input class="form-input" id="view-reason" type="text" placeholder="e.g. No HTTPS, No Hours"/>
+    </div>
+    <div class="form-row form-row-2">
+      <div>
+        <label class="form-label">Lead Status</label>
+        <select class="form-input" id="view-status">
+          <option value="">Any</option>
+          <option value="active">Active</option>
+          <option value="hot">Hot</option>
+          <option value="dead">Dead</option>
+        </select>
+      </div>
+      <div>
+        <label class="form-label">Lead Action</label>
+        <select class="form-input" id="view-action">
+          <option value="">Any</option>
+          <option value="not_contacted">Not Contacted</option>
+          <option value="contacted">Contacted</option>
+          <option value="deal">Deal</option>
+          <option value="closed_won">Closed Won</option>
+          <option value="closed_lost">Closed Lost</option>
+          <option value="dead">Dead</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeViewModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveView()">Save View</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const state = {
+  leads:{no_website:[],needs_improvement:[]},
+  workspace:[],views:[],
+  selected:new Set(),
+  currentTab:'no-website',
+  wsStatusFilter:'',wsActionFilter:'',
+  searchRunning:false,
+};
+
+const $=id=>document.getElementById(id);
+const scoreClass=s=>+s>=8?'score-high':+s>=6?'score-mid':'score-low';
+
+function scoreBadge(s){return`<span class="score-badge ${scoreClass(s)}">${s||'?'}</span>`}
+
+function reasonTags(r){
+  if(!r)return'';
+  const colorMap={'no website':'red','unreachable':'red','broken':'red','no https':'amber','mobile':'amber','no hours':'amber','no photos':'amber','no description':'gray','no booking':'gray','no phone':'gray','low review':'gray','mature':'gray'};
+  return r.split(';').map(t=>{
+    t=t.trim();if(!t)return'';
+    const key=Object.keys(colorMap).find(k=>t.toLowerCase().includes(k));
+    return`<span class="tag tag-${colorMap[key]||'gray'}">${t}</span>`;
+  }).join('');
+}
+
+function gbpFlags(l){
+  const f=[];
+  if(l.gbp_has_hours==='False'||l.gbp_has_hours===false)f.push('<span class="tag tag-amber">🕐 No Hours</span>');
+  const p=parseInt(l.gbp_photo_count||0);
+  if(p===0)f.push('<span class="tag tag-amber">📷 No Photos</span>');
+  else if(p<3)f.push(`<span class="tag tag-gray">📷 ${p} photo${p>1?'s':''}</span>`);
+  if(l.gbp_has_description==='False'||l.gbp_has_description===false)f.push('<span class="tag tag-gray">📝 No Desc</span>');
+  return f.length?`<div class="gbp-flags">${f.join('')}</div>`:'<span style="color:var(--gray4);font-size:12px;">—</span>';
+}
+
+function websiteFlags(l){
+  const f=[];
+  if(l.website_reachable==='False'||l.website_reachable===false)f.push('<span class="tag tag-red">⚠ Broken</span>');
+  if(l.website_https==='False'||l.website_https===false)f.push('<span class="tag tag-amber">🔒 No HTTPS</span>');
+  if(l.website_has_viewport==='False'||l.website_has_viewport===false)f.push('<span class="tag tag-amber">📱 Not Mobile</span>');
+  if(l.website_booking_detected==='False'||l.website_booking_detected===false)f.push('<span class="tag tag-gray">📅 No CTA</span>');
+  return f.length?`<div class="gbp-flags">${f.join('')}</div>`:'<span style="color:var(--gray4);font-size:12px;">—</span>';
+}
+
+function bizCell(l){
+  const name=l.maps_url?`<a href="${l.maps_url}" target="_blank">${l.business_name||'—'}</a>`:(l.business_name||'—');
+  return`<div class="biz-name">${name}</div>${l.address?`<div class="biz-addr">${l.address}</div>`:''}`;
+}
+
+function fmtDate(iso){if(!iso)return'—';return new Date(iso).toLocaleDateString('en-CA',{month:'short',day:'numeric'})}
+
+// ── Tabs ──────────────────────────────────────────────────────────────
+function switchTab(tab,btn){
+  state.currentTab=tab;
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  $(`panel-${tab}`)?.classList.add('active');
+  if(btn)btn.classList.add('active');
+  updateActionBar();
+}
+
+// ── Render leads ──────────────────────────────────────────────────────
+function renderLeads(){
+  renderLeadTable('no-website',state.leads.no_website);
+  renderLeadTable('needs-improvement',state.leads.needs_improvement);
+  $('badge-no-website').textContent=state.leads.no_website.length;
+  $('badge-needs-improvement').textContent=state.leads.needs_improvement.length;
+}
+
+function renderLeadTable(tab,leads,filter=''){
+  const tbody=$(`body-${tab}`);
+  const cols=tab==='no-website'?7:7;
+  const filtered=filter?leads.filter(l=>JSON.stringify(l).toLowerCase().includes(filter.toLowerCase())):leads;
+  if(!filtered.length){
+    tbody.innerHTML=`<tr><td colspan="${cols}"><div class="empty"><div class="empty-icon">${filter?'🔎':'✓'}</div><h3>${filter?'No matches':'No leads'}</h3><p>${filter?'Try a different term.':'No leads in this category yet.'}</p></div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML=filtered.map(l=>{
+    const ch=state.selected.has(l.id)?'checked':'';
+    const sc=state.selected.has(l.id)?'selected':'';
+    if(tab==='no-website')return`<tr class="${sc}" data-id="${l.id}">
+      <td><input type="checkbox" class="cb" ${ch} onchange="toggleSelect('${l.id}',this.checked)"/></td>
+      <td>${scoreBadge(l.lead_score)}</td><td>${bizCell(l)}</td>
+      <td><span class="biz-cat">${l.category_query||'—'}</span></td>
+      <td style="font-size:12px;color:var(--gray6)">${l.phone||'—'}</td>
+      <td>${gbpFlags(l)}</td><td><div class="reasons">${reasonTags(l.reason_for_targeting)}</div></td>
+    </tr>`;
+    return`<tr class="${sc}" data-id="${l.id}">
+      <td><input type="checkbox" class="cb" ${ch} onchange="toggleSelect('${l.id}',this.checked)"/></td>
+      <td>${scoreBadge(l.lead_score)}</td><td>${bizCell(l)}</td>
+      <td><span class="biz-cat">${l.category_query||'—'}</span></td>
+      <td>${websiteFlags(l)}</td><td>${gbpFlags(l)}</td>
+      <td><div class="reasons">${reasonTags(l.reason_for_targeting)}</div></td>
+    </tr>`;
+  }).join('');
+}
+
+// ── Workspace ─────────────────────────────────────────────────────────
+function renderWorkspace(filter=''){
+  const tbody=$('body-workspace');
+  $('badge-workspace').textContent=state.workspace.length;
+  let leads=state.workspace;
+  if(state.wsStatusFilter)leads=leads.filter(l=>l.workspace_status===state.wsStatusFilter);
+  if(state.wsActionFilter)leads=leads.filter(l=>l.workspace_action===state.wsActionFilter);
+  if(filter)leads=leads.filter(l=>JSON.stringify(l).toLowerCase().includes(filter.toLowerCase()));
+  if(!leads.length){
+    tbody.innerHTML=`<tr><td colspan="9"><div class="empty"><div class="empty-icon">${state.workspace.length?'🔎':'📋'}</div><h3>${state.workspace.length?'No matches':'Workspace empty'}</h3><p>${state.workspace.length?'Adjust filters.':'Move leads here to start tracking outreach.'}</p></div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML=leads.map(l=>{
+    const ch=state.selected.has(l.id)?'checked':'';
+    const sc=state.selected.has(l.id)?'selected':'';
+    const st=l.workspace_status||'active';
+    const ac=l.workspace_action||'not_contacted';
+    return`<tr class="${sc}" data-id="${l.id}">
+      <td><input type="checkbox" class="cb" ${ch} onchange="toggleSelect('${l.id}',this.checked)"/></td>
+      <td>${scoreBadge(l.lead_score)}</td><td>${bizCell(l)}</td>
+      <td style="font-size:12px">${l.phone||'—'}</td>
+      <td><select class="status-select status-${st}" onchange="updateLead('${l.id}','workspace_status',this.value,this)">
+        <option value="active" ${st==='active'?'selected':''}>Active</option>
+        <option value="hot" ${st==='hot'?'selected':''}>🔥 Hot</option>
+        <option value="dead" ${st==='dead'?'selected':''}>Dead</option>
+      </select></td>
+      <td><select class="action-select action-${ac}" onchange="updateLead('${l.id}','workspace_action',this.value,this)">
+        <option value="not_contacted" ${ac==='not_contacted'?'selected':''}>Not Contacted</option>
+        <option value="contacted" ${ac==='contacted'?'selected':''}>Contacted</option>
+        <option value="deal" ${ac==='deal'?'selected':''}>Deal</option>
+        <option value="dead" ${ac==='dead'?'selected':''}>Dead</option>
+        <option value="closed_won" ${ac==='closed_won'?'selected':''}>✓ Closed Won</option>
+        <option value="closed_lost" ${ac==='closed_lost'?'selected':''}>Closed Lost</option>
+      </select></td>
+      <td><textarea class="notes-input" rows="1" placeholder="Add note…" onblur="updateLead('${l.id}','notes',this.value)">${l.notes||''}</textarea></td>
+      <td style="font-size:11px;color:var(--gray4);white-space:nowrap">${fmtDate(l.workspace_added_at)}</td>
+      <td><button class="btn btn-danger btn-sm" onclick="removeLead('${l.id}')">✕</button></td>
+    </tr>`;
+  }).join('');
+}
+
+// ── Custom views ──────────────────────────────────────────────────────
+function renderViews(){
+  document.querySelectorAll('.tab-btn[data-view-id]').forEach(b=>b.remove());
+  document.querySelectorAll('.panel[data-view-id]').forEach(p=>p.remove());
+  state.views.forEach(view=>{
+    const btn=document.createElement('button');
+    btn.className='tab-btn';btn.dataset.tab=`view-${view.id}`;btn.dataset.viewId=view.id;
+    btn.innerHTML=`◈ ${view.name} <span class="badge">0</span><span class="close-tab" onclick="deleteView(event,'${view.id}')">✕</span>`;
+    btn.onclick=()=>{renderViewPanel(view);switchTab(`view-${view.id}`,btn)};
+    $('tab-bar').insertBefore(btn,document.querySelector('.add-view-btn'));
+    const panel=document.createElement('div');
+    panel.className='panel';panel.id=`panel-view-${view.id}`;panel.dataset.viewId=view.id;
+    panel.innerHTML=`<div class="toolbar"><div class="search-input">🔍 <input type="text" placeholder="Search…" oninput="filterViewPanel('${view.id}',this.value)"/></div><div class="toolbar-right"><span style="font-size:12px;color:var(--gray6)">Filtered view · <strong>${view.name}</strong></span></div></div><div class="table-wrap"><table><thead><tr><th>Score</th><th>Business</th><th>Category</th><th>Reasons</th><th>GBP Issues</th></tr></thead><tbody id="body-view-${view.id}"></tbody></table></div>`;
+    document.querySelector('main').appendChild(panel);
+  });
+}
+
+function getViewLeads(view){
+  const src=view.source==='workspace'?state.workspace:view.source==='no_website'?state.leads.no_website:state.leads.needs_improvement;
+  return src.filter(l=>{
+    if(view.score_min&&+l.lead_score<+view.score_min)return false;
+    if(view.score_max&&+l.lead_score>+view.score_max)return false;
+    if(view.category&&!l.category_query?.toLowerCase().includes(view.category.toLowerCase()))return false;
+    if(view.reason&&!l.reason_for_targeting?.toLowerCase().includes(view.reason.toLowerCase()))return false;
+    if(view.status&&l.workspace_status!==view.status)return false;
+    if(view.action&&l.workspace_action!==view.action)return false;
+    return true;
+  });
+}
+
+function renderViewPanel(view,filter=''){
+  const tbody=$(`body-view-${view.id}`);if(!tbody)return;
+  let leads=getViewLeads(view);
+  if(filter)leads=leads.filter(l=>JSON.stringify(l).toLowerCase().includes(filter.toLowerCase()));
+  const btn=document.querySelector(`[data-view-id="${view.id}"] .badge`);
+  if(btn)btn.textContent=getViewLeads(view).length;
+  if(!leads.length){tbody.innerHTML=`<tr><td colspan="5"><div class="empty"><div class="empty-icon">🔎</div><h3>No matches</h3><p>Adjust view filters.</p></div></td></tr>`;return;}
+  tbody.innerHTML=leads.map(l=>`<tr><td>${scoreBadge(l.lead_score)}</td><td>${bizCell(l)}</td><td><span class="biz-cat">${l.category_query||'—'}</span></td><td><div class="reasons">${reasonTags(l.reason_for_targeting)}</div></td><td>${gbpFlags(l)}</td></tr>`).join('');
+}
+
+function filterViewPanel(id,f){const v=state.views.find(x=>x.id===id);if(v)renderViewPanel(v,f)}
+
+// ── Selection ─────────────────────────────────────────────────────────
+function toggleSelect(id,checked){
+  if(checked)state.selected.add(id);else state.selected.delete(id);
+  document.querySelectorAll(`[data-id="${id}"]`).forEach(tr=>tr.classList.toggle('selected',checked));
+  updateActionBar();
+}
+
+function selectAll(tab,checked){
+  const leads=tab==='workspace'?state.workspace:tab==='no-website'?state.leads.no_website:state.leads.needs_improvement;
+  leads.forEach(l=>{if(checked)state.selected.add(l.id);else state.selected.delete(l.id)});
+  if(tab==='workspace')renderWorkspace();else renderLeadTable(tab,leads);
+  updateActionBar();
+}
+
+function clearSelection(){
+  state.selected.clear();
+  renderLeads();renderWorkspace();updateActionBar();
+  ['sa-no-website','sa-needs-improvement','sa-workspace'].forEach(id=>{if($(id))$(id).checked=false});
+}
+
+function updateActionBar(){
+  const bar=$('action-bar');
+  const onWorkspace=state.currentTab==='workspace';
+  $('sel-count-label').textContent=`${state.selected.size} selected`;
+  bar.classList.toggle('visible',state.selected.size>0&&!onWorkspace);
+}
+
+// ── Workspace ops ─────────────────────────────────────────────────────
+async function moveToWorkspace(){
+  if(!state.selected.size)return;
+  await fetch('/api/workspace/add',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ids:[...state.selected]})});
+  state.selected.clear();
+  await loadAll();
+  switchTab('workspace',document.querySelector('[data-tab="workspace"]'));
+}
+
+async function updateLead(id,field,value,el){
+  const l=state.workspace.find(x=>x.id===id);
+  if(l)l[field]=value;
+  if(el&&el.tagName==='SELECT'){
+    el.className=el.className.replace(/status-\w+|action-\w+/g,'').trim();
+    el.classList.add(field==='workspace_status'?`status-${value}`:`action-${value}`);
+  }
+  await fetch(`/api/workspace/${id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({[field]:value})});
+}
+
+async function removeLead(id){
+  await fetch(`/api/workspace/${id}`,{method:'DELETE'});
+  state.workspace=state.workspace.filter(l=>l.id!==id);
+  state.selected.delete(id);
+  renderWorkspace();
+  $('badge-workspace').textContent=state.workspace.length;
+}
+
+function filterTable(tab,q){
+  if(tab==='workspace')renderWorkspace(q);
+  else renderLeadTable(tab,tab==='no-website'?state.leads.no_website:state.leads.needs_improvement,q);
+}
+
+// ── Log sidebar ───────────────────────────────────────────────────────
+let sidebarOpen=false;
+function toggleSidebar(){
+  sidebarOpen=!sidebarOpen;
+  $('log-sidebar').classList.toggle('open',sidebarOpen);
+  $('app').classList.toggle('sidebar-open',sidebarOpen);
+  if(sidebarOpen){$('log-toggle-btn').classList.remove('has-activity')}
+}
+function clearLog(){$('sidebar-log').innerHTML='<span class="log-line meta">Log cleared.</span>'}
+function logLine(text){
+  const log=$('sidebar-log');
+  const line=document.createElement('span');
+  line.className='log-line'+(text.toLowerCase().includes('warn')||text.includes('WARNING')?' warn':text.toLowerCase().includes('error')||text.toLowerCase().includes('fail')?' err':'');
+  line.textContent=text;
+  log.appendChild(document.createElement('br'));
+  log.appendChild(line);
+  log.scrollTop=log.scrollHeight;
+  // update line count
+  const lines=log.querySelectorAll('span.log-line').length;
+  $('sidebar-line-count').textContent=`${lines} lines`;
+  // pulse badge if sidebar closed
+  if(!sidebarOpen)$('log-toggle-btn').classList.add('has-activity');
+}
+
+function setSidebarStatus(state){
+  const pill=$('sidebar-status-pill');
+  pill.className='sidebar-status-pill sidebar-status-'+state;
+  pill.textContent={running:'Running…',done:'Done',error:'Error',idle:'Idle'}[state]||state;
+}
+
+// ── Search ────────────────────────────────────────────────────────────
+async function handleRunSearch(){
+  const btn=$('run-btn');
+  btn.disabled=true;btn.innerHTML='<span class="spinner"></span> Running…';
+  // Open sidebar automatically
+  if(!sidebarOpen)toggleSidebar();
+  $('sidebar-log').innerHTML='';
+  setSidebarStatus('running');
+  logLine('Starting search…');
+
+  const res=await fetch('/api/search/start',{method:'POST'}).then(r=>r.json());
+  if(!res.ok){
+    logLine('Error: '+(res.message||'Could not start search'));
+    setSidebarStatus('error');
+    btn.disabled=false;btn.innerHTML='<span>▶</span> Run Search';
+    return;
+  }
+
+  const es=new EventSource('/api/search/progress');
+  es.onmessage=async({data})=>{
+    const status=JSON.parse(data);
+    if(status.message)logLine(status.message);
+    if(status.state==='done'||status.state==='error'){
+      es.close();
+      setSidebarStatus(status.state);
+      btn.disabled=false;btn.innerHTML='<span>▶</span> Run Search';
+      await loadAll();
+    }
+  };
+  es.onerror=()=>{
+    es.close();
+    setSidebarStatus('error');
+    btn.disabled=false;btn.innerHTML='<span>▶</span> Run Search';
+  };
+}
+
+// ── View modal ────────────────────────────────────────────────────────
+function openViewModal(){$('view-overlay').classList.add('visible')}
+function closeViewModal(){$('view-overlay').classList.remove('visible')}
+
+async function saveView(){
+  const name=$('view-name').value.trim();
+  if(!name){$('view-name').focus();return;}
+  const view={
+    name,source:$('view-source').value,
+    score_min:$('view-score-min').value||null,score_max:$('view-score-max').value||null,
+    category:$('view-category').value.trim()||null,
+    reason:$('view-reason').value.trim()||null,
+    status:$('view-status').value||null,
+    action:$('view-action').value||null,
+  };
+  const saved=await fetch('/api/views',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(view)}).then(r=>r.json());
+  state.views.push(saved);renderViews();closeViewModal();
+  ['view-name','view-score-min','view-score-max','view-category','view-reason'].forEach(id=>$(id).value='');
+  $('view-status').value='';$('view-action').value='';
+}
+
+async function deleteView(e,id){
+  e.stopPropagation();
+  await fetch(`/api/views/${id}`,{method:'DELETE'});
+  state.views=state.views.filter(v=>v.id!==id);
+  renderViews();
+  switchTab('no-website',document.querySelector('[data-tab="no-website"]'));
+}
+
+// ── Setup check ───────────────────────────────────────────────────────
+async function checkSetup(){
+  const s=await fetch('/api/status').then(r=>r.json());
+  const dot=$('key-dot'),lbl=$('key-label');
+  if(s.api_key_configured){dot.classList.remove('red');lbl.textContent='API key OK'}
+  else{dot.classList.add('red');lbl.textContent='API key missing'}
+  const ldot=$('leads-dot'),llbl=$('leads-label');
+  if(s.lead_count>0){ldot.style.background='var(--g600)';llbl.textContent=`${s.lead_count} leads cached`}
+  else{ldot.style.background='var(--gray4)';llbl.textContent='No leads yet'}
+  // Reflect any in-progress search on load
+  if(s.search_status?.state==='running'){
+    setSidebarStatus('running');
+    $('run-btn').disabled=true;$('run-btn').innerHTML='<span class="spinner"></span> Running…';
+    $('log-toggle-btn').classList.add('has-activity');
+  }
+}
+
+// ── Load all ──────────────────────────────────────────────────────────
+async function loadAll(){
+  const[leadsRes,wsRes,viewsRes]=await Promise.all([
+    fetch('/api/leads').then(r=>r.json()),
+    fetch('/api/workspace').then(r=>r.json()),
+    fetch('/api/views').then(r=>r.json()),
+  ]);
+  state.leads=leadsRes;state.workspace=wsRes;state.views=viewsRes;
+  renderLeads();renderWorkspace();renderViews();
+  state.views.forEach(v=>{const b=document.querySelector(`[data-view-id="${v.id}"]`);if(b)renderViewPanel(v)});
+  await checkSetup();
+}
+
+loadAll();
+</script>
+</body>
+</html>
